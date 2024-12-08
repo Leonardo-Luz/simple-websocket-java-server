@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 public class WebSocket {
   private static List<ClientHandler> clients = new ArrayList<>();
+  private static List<Integer> online = new ArrayList<>();
 
   public static void main(String[] args) throws IOException, NoSuchAlgorithmException {
     ServerSocket server = new ServerSocket(8080);
@@ -128,7 +129,16 @@ public class WebSocket {
     }
 
     private void sendMessage(String message) throws IOException {
-      byte[] messageBytes = message.getBytes("UTF-8");
+      boolean onlineCheck = message.endsWith("!");
+      boolean offlineCheck = message.endsWith("?");
+
+      String send = message;
+
+      if (onlineCheck || offlineCheck) {
+        send = online.toString();
+      }
+
+      byte[] messageBytes = send.getBytes("UTF-8");
       int length = messageBytes.length;
       byte[] frame;
 
@@ -165,10 +175,19 @@ public class WebSocket {
         err.printStackTrace();
       }
 
-      System.out.println("Message sended to client: " + message);
+      System.out.println("Message sended to client: " + send);
     }
 
     private static void broadcastMessage(String message) {
+      boolean onlineCheck = message.endsWith("!");
+      boolean offlineCheck = message.endsWith("?");
+
+      if (offlineCheck && online.contains(Integer.valueOf(message.replaceFirst(".$", "")))) {
+        online.remove(Integer.valueOf(message.replaceFirst(".$", "")));
+      } else if (onlineCheck) {
+        online.add(Integer.valueOf(message.replaceFirst(".$", "")));
+      }
+
       System.out.println("Clients: " + clients.size());
       synchronized (clients) {
         for (ClientHandler client : clients) {
